@@ -7,4 +7,4 @@ def index(request):
 
 def list(request):
 
-    return render()
+    return HttpResponse("This page should display the list of slopes...")
