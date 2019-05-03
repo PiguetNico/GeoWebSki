@@ -1,8 +1,12 @@
-from django.contrib import admin
+# from django.contrib import admin
+from django.contrib.gis import admin
 
-# Register your models here.
+# Registering our models
 from .models import Slope, SkiLift, Restaurant
 
-admin.site.register(Slope)
-admin.site.register(SkiLift)
-admin.site.register(Restaurant)
+# (use "admin.GeoModelAdmin" to use Open Layers maps)
+# (use "admin.OSMGeoAdmin" to use OpenStreetMaps maps)
+
+admin.site.register(Slope, admin.OSMGeoAdmin)
+admin.site.register(SkiLift, admin.OSMGeoAdmin)
+admin.site.register(Restaurant, admin.OSMGeoAdmin)
