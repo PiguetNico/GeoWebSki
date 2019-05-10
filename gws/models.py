@@ -29,6 +29,7 @@ class SkiLift(models.Model):
     def __str__(self):
         return '"' + self.name + '" ski lift'
 
+
 class Restaurant(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField('Restaurant name', max_length=80)

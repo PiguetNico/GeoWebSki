@@ -1,20 +1,36 @@
-# from django.shortcuts import render
 from django.http import HttpResponse
-from gws.models import Restaurant
-from django.core.serializers import serialize
 from django.shortcuts import render
+from gws import geodata
+
 
 def index(request):
     return HttpResponse("Hello ! :)")
 
 
-def geo_restaurants(request):
-    geojson = serialize(
-        'geojson',
-        Restaurant.objects.all(),
-        geometry_field='position',
-        fields=('id', 'name', 'capacity')
-    )
+def request_val(request, identifier):
+
+    if identifier in request.GET:
+        return request.GET
+    elif identifier in request.POST:
+        return request.POST
+    else:
+        return None
+
+
+def geodata_restaurants(request):
+
+    restaurant_id = request_val(request, 'id')
+
+    if id in request.GET:
+        restaurant_id = request.GET
+    elif id in request.POST:
+        restaurant_id = request.POST
+
+
+    if id is None:
+        geojson = geodata.get_restaurant_by_id(restaurant_id)
+    else:
+        geojson = geodata.get_all_restaurants()
 
     return HttpResponse(geojson, content_type='application/json')
 
