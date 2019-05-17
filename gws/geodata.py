@@ -1,68 +1,77 @@
-from gws.models import Restaurant, SkiLift, Slope
+from gws.models import Restaurant, SkiLift, Slope, StoppingPlace
 from django.core.serializers import serialize
 
 
-def get_all_restaurants():
+def objects_to_geojson(objects, geo_field, other_fields):
     str_geojson = serialize(
         'geojson',
-        Restaurant.objects.all(),
-        geometry_field='position',
-        fields=('id', 'name', 'capacity')
+        objects,
+        geometry_field=geo_field,
+        fields=other_fields
     )
 
     return str_geojson
 
 
-def get_all_skilifts():
-    str_geojson = serialize(
-        'geojson',
-        SkiLift.objects.all(),
-        geometry_field='track',
-        fields=('id', 'name', 'hourly_flow')
+def restaurants_geojson(objects):
+    return objects_to_geojson(
+        objects,
+        geo_field='position',
+        other_fields=('id', 'name', 'capacity')
     )
 
-    return str_geojson
 
-
-def get_all_slopes():
-    str_geojson = serialize(
-        'geojson',
-        Slope.objects.all(),
-        geometry_field='area',
-        fields=('id', 'name', 'color', 'open')
+def skilifts_geojson(objects):
+    return objects_to_geojson(
+        objects,
+        geo_field='track',
+        other_fields=('id', 'name', 'hourly_flow')
     )
 
-    return str_geojson
 
-
-def get_restaurant_by_id(restaurant_id):
-    str_geojson = serialize(
-        'geojson',
-        Restaurant.objects.filter(id=restaurant_id),
-        geometry_field='position',
-        fields=('id', 'name', 'capacity')
+def slopes_geojson(objects):
+    return objects_to_geojson(
+        objects,
+        geo_field='area',
+        other_fields=('id', 'name', 'color', 'open')
     )
 
-    return str_geojson
 
-
-def get_skilift_by_id(skilift_id):
-    str_geojson = serialize(
-        'geojson',
-        SkiLift.objects.filter(id=skilift_id),
-        geometry_field='track',
-        fields=('id', 'name', 'hourly_flow')
+def stopping_places_geojson(objects):
+    return objects_to_geojson(
+        objects,
+        geo_field='area',
+        other_fields=('id', 'altitude')
     )
 
-    return str_geojson
+
+def restaurants():
+    return restaurants_geojson(Restaurant.objects.all())
 
 
-def get_slope_by_id(slope_id):
-    str_geojson = serialize(
-        'geojson',
-        Slope.objects.filter(id=slope_id),
-        geometry_field='area',
-        fields=('id', 'name', 'color', 'open')
-    )
+def restaurant_by_id(_id):
+    return restaurants_geojson(Restaurant.objects.filter(id=_id))
 
-    return str_geojson
+
+def skilifts():
+    return skilifts_geojson(SkiLift.objects.all())
+
+
+def skilift_by_id(_id):
+    return skilifts_geojson(SkiLift.objects.filter(id=_id))
+
+
+def slopes():
+    return slopes_geojson(Slope.objects.all())
+
+
+def slope_by_id(_id):
+    return slopes_geojson(Slope.objects.filter(id=_id))
+
+
+def stopping_places():
+    return stopping_places_geojson(StoppingPlace.objects.all())
+
+
+def stopping_places_by_id(_id):
+    return stopping_places_geojson(StoppingPlace.objects.filter(id=_id))

@@ -1,6 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import render
-from gws import geodata
+from . import geodata
 
 
 def index(request):
@@ -8,7 +8,6 @@ def index(request):
 
 
 def request_val(request, identifier):
-
     if identifier in request.GET:
         return request.GET
     elif identifier in request.POST:
@@ -17,24 +16,45 @@ def request_val(request, identifier):
         return None
 
 
-def geodata_restaurants(request):
+def geodata_restaurants(request, _id=None):
+    return HttpResponse(
+        geodata.restaurant_by_id(_id)
+        if (_id is not None)
+        else geodata.restaurants(),
 
-    restaurant_id = request_val(request, 'id')
-
-    if id in request.GET:
-        restaurant_id = request.GET
-    elif id in request.POST:
-        restaurant_id = request.POST
-
-
-    if id is None:
-        geojson = geodata.get_restaurant_by_id(restaurant_id)
-    else:
-        geojson = geodata.get_all_restaurants()
-
-    return HttpResponse(geojson, content_type='application/json')
+        content_type='application/json'
+    )
 
 
-def skimap(request):
+def geodata_skilifts(request, _id=None):
+    return HttpResponse(
+        geodata.skilift_by_id(_id)
+        if (_id is not None)
+        else geodata.skilifts(),
 
-    return render(request, 'test.html', {'foo': 42})
+        content_type='application/json'
+    )
+
+
+def geodata_slopes(request, _id=None):
+    return HttpResponse(
+        geodata.slope_by_id(_id)
+        if (_id is not None)
+        else geodata.slopes(),
+
+        content_type='application/json'
+    )
+
+
+def geodata_stopping_places(request, _id=None):
+    return HttpResponse(
+        geodata.stopping_places_by_id(_id)
+        if (_id is not None)
+        else geodata.stopping_places(),
+
+        content_type='application/json'
+    )
+
+
+def ski_map(request):
+    return render(request, 'map.html', {'foo': 42})

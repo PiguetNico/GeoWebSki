@@ -38,3 +38,12 @@ class Restaurant(models.Model):
 
     def __str__(self):
         return '"' + self.name + '" restaurant'
+
+
+class StoppingPlace(models.Model):
+    id = models.AutoField(primary_key=True)
+    altitude = models.IntegerField('Altitude (in meters)', null=True)
+    area = models.PolygonField('Stopping place\'s area')
+
+    def __str__(self):
+        return 'Stopping place #' + self.id
