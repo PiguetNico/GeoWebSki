@@ -46,4 +46,4 @@ class StoppingPlace(models.Model):
     area = models.PolygonField('Stopping place\'s area')
 
     def __str__(self):
-        return 'Stopping place #' + self.id
+        return 'Stopping place #' + str(self.id)

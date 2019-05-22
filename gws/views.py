@@ -4,7 +4,7 @@ from . import geodata
 
 
 def index(request):
-    return HttpResponse("Hello ! :)")
+    return render(request, 'map.html', {'foo': 42})
 
 
 def request_val(request, identifier):
@@ -54,7 +54,3 @@ def geodata_stopping_places(request, _id=None):
 
         content_type='application/json'
     )
-
-
-def ski_map(request):
-    return render(request, 'map.html', {'foo': 42})
