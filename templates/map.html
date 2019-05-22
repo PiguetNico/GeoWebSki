@@ -3,140 +3,191 @@
         <meta charset="UTF-8">
         <title>Test</title>
 
-          <!-- add the leaflet css-->
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
-           integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
-           crossorigin=""/>
-          <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
-           integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
-           crossorigin=""></script>
-           <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-          <style>
-              #swissmap {height: 530px;}
-          </style>
-    </head>
+        <!-- Leaflet CSS-->
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
+            integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+            crossorigin=""/>
 
+        <!-- Leaflet JavaScript -->
+        <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
+            integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+            crossorigin=""></script>
+
+        <!-- jQuery -->
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+        <style type="text/css">
+            #swissmap
+            {
+                margin: 1em auto;
+                width: 800px;
+                height: 600px;
+            }
+        </style>
+
+    </head>
     <body>
+
+
         <p>Template value for foo is <strong>{{ foo }}</strong>.</p>
 
+        <div id="swissmap"></div>
+
+        <script type="text/javascript">
+
+            // OpenTopoMap layer (topology added on OpenStreetMaps)
+            var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                maxZoom: 17,
+                attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+            });
+
+            // OpenStreetMaps layer limited to Switzerland...
+            var OpenStreetMap_CH = L.tileLayer('https://tile.osm.ch/switzerland/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                bounds: [[45, 5], [48, 11]]
+            });
+
+            // Stamen watercolor layer
+            var Stamen_Watercolor = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.{ext}', {
+                attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                subdomains: 'abcd',
+                minZoom: 1,
+                maxZoom: 16,
+                ext: 'jpg'
+            });
+
+            // Layers selection popup
+            var tileLayers = {
+              "Watercolor": Stamen_Watercolor,
+              "OpenTopo": OpenTopoMap,
+              "OSM": OpenStreetMap_CH
+            };
+
+            /*for(var layerName in tileLayers)
+            {
+                tileLayers[layerName].on({
+                    mouseover: highlightFeature,
+                    mouseout: resetHighlight,
+                    click: zoomToFeature
+                });
+            }*/
+
+            var themap = L.map('swissmap', { layers: Object.values(tileLayers) }).setView([46.8,8],8);
+
+            L.control.layers(tileLayers, null).addTo(themap);
+
+            // Useless ?...
+            //OpenStreetMap_CH.addTo(themap);
+            //OpenTopoMap.addTo(themap);
 
 
-  <div id="swissmap"></div>
-
-  <script type="text/javascript">
 
 
-      var OpenTopoMap =     L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-	    maxZoom: 17,
-	    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-      });
-
-    var OpenStreetMap_CH = L.tileLayer('https://tile.osm.ch/switzerland/{z}/{x}/{y}.png', {
-	    maxZoom: 18,
-	    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-	    bounds: [[45, 5], [48, 11]]
-      });
-
-      var Stamen_Watercolor = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.{ext}', {
-	    attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-	    subdomains: 'abcd',
-	    minZoom: 1,
-	    maxZoom: 16,
-	    ext: 'jpg'
-      });
-
-      var baseMaps= {
-          "Watercolor":Stamen_Watercolor,
-          "OpenTopo": OpenTopoMap,
-          "OSM": OpenStreetMap_CH,
-      };
-
-      var themap = L.map('swissmap', {layers: [OpenTopoMap,Stamen_Watercolor,OpenStreetMap_CH]}).setView([46.8,8],8)
-
-      L.control.layers(baseMaps,null).addTo(themap);
-      //OpenStreetMap_CH.addTo(themap);
-      //OpenTopoMap.addTo(themap);
-
- /*
-
-      var marker = L.marker([46.134666, 7.62216]).addTo(themap);
 
 
-      var circle = L.circle([46.7, 7.85], {
-         color: 'red',
-         fillColor: '#f03',
-         fillOpacity: 0.5,
-         radius: 5000
-      }).addTo(themap);
+            /*
+            var popup = L.popup();
 
-      var polygon = L.polygon([
-        [46.7, 7.85],
-        [47.3, 7.99],
-        [47.1, 8.3],
-        [46.66,8.6],
-        [46.51, 8.1]
-]      ).addTo(themap);
-
-      marker.bindPopup("The town of Zinal in Valais").openPopup();
-      circle.bindPopup("A circle near Interlaken.");
-      polygon.bindPopup("The area of a new Swiss canton.");
-
-      */
-
-      /*
-      var popup = L.popup();
-
-      function displayLocation(e) {
-          popup
+            function displayLocation(e) {
+            popup
             .setLatLng(e.latlng)
             .setContent("The current location is: " + e.latlng.toString())
             .openOn(themap);
-      }
+            }
 
-      themap.on('click', displayLocation);
-      */
+            themap.on('click', displayLocation);
+            */
 
 
-      var cantondata=null
-           var dataurl="http://127.0.0.1:8000/gws/geo/restaurants";
-       $.getJSON(dataurl, function (data){
-           cantondata= L.geoJson(data, {onEachFeature:onEachFeature});
-           cantondata.addTo(themap);
+            //var cantondata = null;
+            var geojsonLayer;
+            var dataurl="{{ restaurants_json }}";
+
+            // REST API call to get the restaurants
+            $.getJSON(dataurl, function (data) {
+                geojsonLayer = L.geoJson(data, {onEachFeature: addHighlightListeners}); // Possible to use onEachFeature(feature, layer)
+
+                console.log(geojsonLayer);
+                geojsonLayer.addTo(themap);
             });
 
+            // Highlights the target of event e
+            function highlightFeature(e) {
+                var feature = e.target;
 
-      function highlightFeature(e) {
-    var layer = e.target;
+                feature.setStyle({
+                    weight: 5,
+                    color: '#666',
+                    dashArray: '',
+                    fillOpacity: 0.7
+                });
 
-    layer.setStyle({
-        weight: 5,
-        color: '#666',
-        dashArray: '',
-        fillOpacity: 0.7
-    });
+                feature.bringToFront();
+            }
 
-        layer.bringToFront();
+            function resetHighlight(e)
+            {
+                // Resets the polygon to the layer's default styling ?
+                // geojsonLayer.resetStyle(e.target);
 
-}
-
-    function resetHighlight(e) {
-    cantondata.resetStyle(e.target);
-}
-
-
-      function onEachFeature(feature, layer) {
-    layer.on({
-        mouseover: highlightFeature,
-        mouseout: resetHighlight,
-        click: zoomToFeature
-    });
-}
-
-      function zoomToFeature(e) {
-    themap.fitBounds(e.target.getBounds());
-}
+                // Trying to reset to the default style
+                e.target.setStyle({
+                    color: e.target.feature.properties.color
+                });
+            }
 
 
-  </script>
+            function addHighlightListeners(feature, featureLayer)
+            {
+                console.log(feature);
+                featureLayer.setStyle({
+                    color: feature.properties.color
+                });
+                featureLayer.on({
+                    mouseover: highlightFeature,
+                    mouseout: resetHighlight,
+                    click: zoomToFeature
+                });
+            }
+
+            function zoomToFeature(e)
+            {
+                themap.fitBounds(e.target.getBounds());
+            }
+
+
+            // ====================================================
+            // ===== Example code to dynamically add polygons =====
+            // ====================================================
+
+            /*
+            // Creates a marker and adds it to the map
+            var marker = L.marker([46.134666, 7.62216]).addTo(themap);
+
+            // Creates a circle and adds it to the map
+            var circle = L.circle([46.7, 7.85], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.5,
+            radius: 5000
+            }).addTo(themap);
+
+            // Creates a polygon and adds it to the map
+            var polygon = L.polygon([
+            [46.7, 7.85],
+            [47.3, 7.99],
+            [47.1, 8.3],
+            [46.66,8.6],
+            [46.51, 8.1]
+            ]).addTo(themap);
+
+            // Binds popups to the marker, circle and polygon
+            marker.bindPopup("The town of Zinal in Valais").openPopup();
+            circle.bindPopup("A circle near Interlaken.");
+            polygon.bindPopup("The area of a new Swiss canton.");
+            */
+
+        </script>
     </body>
 </html>

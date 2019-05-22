@@ -1,10 +1,15 @@
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 from . import geodata
 
 
 def index(request):
-    return render(request, 'map.html', {'foo': 42})
+    api_urls = {
+        'foo': 42,
+        'restaurants_json': reverse('slopes_json')
+    };
+    return render(request, 'map.html', api_urls)
 
 
 def request_val(request, identifier):
