@@ -23,8 +23,10 @@ class Slope(models.Model):
 class SkiLift(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField('Ski lift name', max_length=80)
-    hourly_flow = models.IntegerField('Hourly flow (in nb. of people)', )
+    hourly_flow = models.IntegerField('Hourly flow (in nb. of people)')
     track = models.LineStringField('Ski lift geographic track')
+    open = models.BooleanField('Ski Lift open?', default=False)
+    twoways = models.BooleanField('Two way lift?', default=False)
 
     def __str__(self):
         return '"' + self.name + '" ski lift'
