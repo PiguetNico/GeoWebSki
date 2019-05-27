@@ -69,7 +69,8 @@
             var themap = L.map('swissmap', {
                 // The set of layers displayed by default on the map
                 layers: [OpenTopoMap],
-            }).setView([46.8,8],6);
+            });
+            themap.setView([46.344693, 7.139517],14);
 
             // Adds the layer/overlay selector GUI
             var layersControl = L.control.layers(
@@ -90,49 +91,7 @@
             var layerHighlightStyle = "";
 
             var skiOverlays = {
-                'Slopes' : {
-                    url: '{{ slopes_geojson }}',
-                    normalStyle: function (feature) {
-                        return {
-                            weight: 6,
-                            fillOpacity: 0.5,
-                            fillColor: feature.properties.color,
-                            color: feature.properties.color
-                        }
-                    },
-                    highlightStyle: function (feature) {
-                        return  {
-                            weight: 3,
-                            fillOpacity: 0.2,
-                            fillColor: feature.properties.color,
-                            color: feature.properties.color
-                        };
-                    }
-                },
-                'Stopping places' : {
-                    url: '{{ stoppingplaces_geojson }}',
-                    normalStyle: {
-                        weight: 3,
-                        fillOpacity: 0.5,
-                        fillColor: 'darkgray'
-                    },
-                    highlightStyle: {
-                        weight: 3,
-                        fillOpacity: 0.2,
-                        fillColor: 'darkgray'
-                    }
-                },
-                'Ski lifts' : {
-                    url: '{{ skilifts_geojson }}',
-                    normalStyle: {
-                        weight: 6,
-                        color: 'darkgray'
-                    },
-                    highlightStyle: {
-                        weight: 6,
-                        color: 'lightgray'
-                    }
-                },
+
                 'Restaurants' : {
                     url: '{{ restaurants_geojson }}',
                     normalStyle: {
@@ -144,6 +103,56 @@
                         fillOpacity: 0.2
                     }
                 },
+
+                'Ski lifts' : {
+                    url: '{{ skilifts_geojson }}',
+                    normalStyle: {
+                        weight: 4,
+                        color: '#333',
+                        dashArray: '30 10'
+                    },
+                    highlightStyle: {
+                        weight: 4,
+                        color: '#333'
+                    }
+                },
+
+
+                'Stopping places' : {
+                    url: '{{ stoppingplaces_geojson }}',
+                    normalStyle: {
+                        weight: 2,
+                        fillOpacity: 0.5,
+                        fillColor: '#840',
+                        color: '#840'
+                    },
+                    highlightStyle: {
+                        weight: 3,
+                        fillOpacity: 0.2,
+                        fillColor: '#840',
+                        color: '#840'
+                    }
+                },
+
+                'Slopes' : {
+                    url: '{{ slopes_geojson }}',
+                    normalStyle: function (feature) {
+                        return {
+                            weight: 2,
+                            fillOpacity: 0.3,
+                            fillColor: feature.properties.color,
+                            color: feature.properties.color
+                        }
+                    },
+                    highlightStyle: function (feature) {
+                        return  {
+                            weight: 3,
+                            fillOpacity: 0.5,
+                            fillColor: feature.properties.color,
+                            color: feature.properties.color
+                        };
+                    }
+                }
             };
 
             for (var name in skiOverlays)
@@ -173,8 +182,6 @@
 
 
                         // Setting the polygon's style
-                        console.log(featureJson);
-                        console.log(featureLayer);
                         if (featureLayer.setStyle)
                             featureLayer.setStyle( normal );
 
