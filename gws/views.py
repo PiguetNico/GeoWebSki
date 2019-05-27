@@ -7,7 +7,10 @@ from . import geodata
 def index(request):
     api_urls = {
         'foo': 42,
-        'restaurants_json': reverse('slopes_json')
+        'restaurants_geojson': reverse('restaurants_geojson'),
+        'slopes_geojson': reverse('slopes_geojson'),
+        'stoppingplaces_geojson': reverse('stoppingplaces_geojson'),
+        'skilifts_geojson': reverse('skilifts_geojson')
     };
     return render(request, 'map.html', api_urls)
 
