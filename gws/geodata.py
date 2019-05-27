@@ -25,7 +25,7 @@ def skilifts_geojson(objects):
     return objects_to_geojson(
         objects,
         geo_field='track',
-        other_fields=('id', 'name', 'hourly_flow')
+        other_fields=('id', 'name', 'hourly_flow','open','twoways')
     )
 
 
