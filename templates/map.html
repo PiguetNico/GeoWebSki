@@ -35,81 +35,81 @@
 
         <script type="text/javascript">
 
-            // OpenTopoMap layer (topology added on OpenStreetMaps)
+            // Interesting layer options to use:
+            // 'subdomains' to customize which subdomains are used for parallel download
+            // 'minZoom' and 'maxZoom' to limit the zoom interval in which a layer can be displayed
+            // 'bounds' to limit the bounds in which a layer is displayed on the map
+
+            // OpenTopoMap tile layer (topology added on OpenStreetMaps)
             var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                maxZoom: 17,
                 attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
             });
 
-            // OpenStreetMaps layer limited to Switzerland...
+            // OpenStreetMaps tile layer (limited to Switzerland)
+            // Unlimited tiles URL (slower!!) => 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
             var OpenStreetMap_CH = L.tileLayer('https://tile.osm.ch/switzerland/{z}/{x}/{y}.png', {
-                maxZoom: 18,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                bounds: [[45, 5], [48, 11]]
             });
 
-            // Stamen watercolor layer
-            var Stamen_Watercolor = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.{ext}', {
-                attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                subdomains: 'abcd',
-                minZoom: 1,
-                maxZoom: 16,
-                ext: 'jpg'
+            // Stamen watercolor tile layer
+            // ({s} allows to use different subdomains for parallel downloading in browsers)
+            var Stamen_Watercolor = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.jpg', {
+                attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                // by default, {s} is set to ['a','b','c']
+                // but it can be customized with the 'subdomains' option
             });
 
             // Layers selection popup
             var tileLayers = {
-              "Watercolor": Stamen_Watercolor,
-              "OpenTopo": OpenTopoMap,
-              "OSM": OpenStreetMap_CH
+                "Standard map": OpenStreetMap_CH,
+                "Topology map": OpenTopoMap
+                // "Watercolor": Stamen_Watercolor
             };
 
-            /*for(var layerName in tileLayers)
-            {
-                tileLayers[layerName].on({
-                    mouseover: highlightFeature,
-                    mouseout: resetHighlight,
-                    click: zoomToFeature
-                });
-            }*/
+            var themap = L.map('swissmap', {
+                // The set of layers displayed by default on the map
+                layers: [OpenTopoMap],
+            }).setView([46.8,8],8);
 
-            var themap = L.map('swissmap', { layers: Object.values(tileLayers) }).setView([46.8,8],8);
+            // Adds the layer/overlay selector GUI
+            L.control.layers(
+                tileLayers, // base layers (radio buttons)
+                null, // overlays (checkboxes)
+                {collapsed: false}
+            ).addTo(themap);
 
-            L.control.layers(tileLayers, null).addTo(themap);
-
-            // Useless ?...
-            //OpenStreetMap_CH.addTo(themap);
-            //OpenTopoMap.addTo(themap);
+            // Adding a layer manually
+            // layer.addTo(map);
 
 
 
 
-
-
-            /*
-            var popup = L.popup();
-
-            function displayLocation(e) {
-            popup
-            .setLatLng(e.latlng)
-            .setContent("The current location is: " + e.latlng.toString())
-            .openOn(themap);
-            }
-
-            themap.on('click', displayLocation);
-            */
-
-
-            //var cantondata = null;
-            var geojsonLayer;
             var dataurl="{{ restaurants_json }}";
+            var layerNormalStyle = "";
+            var layerNHighlightStyle = "";
+
+            var skiLayers = {
+                'Slopes' : {
+                    url: '{{ restaurants_json }}',
+                    normalStyle:  {weight: 6, fillOpacity: 0.5},
+                    highlightStyle: {weight: 3, fillOpacity: 0.2}
+                },
+                'Slopes' : {
+                    url: '{{ restaurants_json }}',
+                    normalStyle:  {weight: 6, fillOpacity: 0.5},
+                    highlightStyle: {weight: 3, fillOpacity: 0.2}
+                },
+
+
+            };
 
             // REST API call to get the restaurants
             $.getJSON(dataurl, function (data) {
-                geojsonLayer = L.geoJson(data, {onEachFeature: addHighlightListeners}); // Possible to use onEachFeature(feature, layer)
+                var geojsonLayer = L.geoJson(data, {onEachFeature: addHighlightListeners});
 
-                console.log(geojsonLayer);
+                console.log("About to add geojson layer...");
                 geojsonLayer.addTo(themap);
+                console.log("Added!");
             });
 
             // Highlights the target of event e
@@ -118,9 +118,7 @@
 
                 feature.setStyle({
                     weight: 5,
-                    color: '#666',
-                    dashArray: '',
-                    fillOpacity: 0.7
+                    fillOpacity: 0.5
                 });
 
                 feature.bringToFront();
@@ -131,19 +129,29 @@
                 // Resets the polygon to the layer's default styling ?
                 // geojsonLayer.resetStyle(e.target);
 
+                // Line to get the feature's color
+                // e.target.feature.properties.color
+
                 // Trying to reset to the default style
                 e.target.setStyle({
-                    color: e.target.feature.properties.color
+                    weight: 3,
+                    fillOpacity: 0.2
                 });
             }
 
-
-            function addHighlightListeners(feature, featureLayer)
+            // Binds highlighting functions to each feature layer
+            function addHighlightListeners(featureJson, featureLayer)
             {
-                console.log(feature);
+                console.log("Adding listeners to feature " + featureJson.properties.name);
+
+                // Setting the polygon's style
                 featureLayer.setStyle({
-                    color: feature.properties.color
+                    color: featureJson.properties.color,
+                    weight: 3,
+                    fillOpacity: 0.2
                 });
+
+                // Mouse-triggered highlighting and zooming
                 featureLayer.on({
                     mouseover: highlightFeature,
                     mouseout: resetHighlight,
@@ -151,10 +159,30 @@
                 });
             }
 
+            // Zooms on a specific feature layer
             function zoomToFeature(e)
             {
                 themap.fitBounds(e.target.getBounds());
             }
+
+
+            // ====================================================
+            // ============ Example code to for popups ============
+            // ====================================================
+
+            /*
+            var popup = L.popup();
+
+            function displayLocation(e) {
+                popup
+                .setLatLng(e.latlng)
+                .setContent("The current location is: " + e.latlng.toString())
+                .openOn(themap);
+            }
+
+            themap.on('click', displayLocation);
+            */
+
 
 
             // ====================================================
