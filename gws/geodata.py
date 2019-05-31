@@ -17,7 +17,7 @@ def restaurants_geojson(objects):
     return objects_to_geojson(
         objects,
         geo_field='position',
-        other_fields=('id', 'name', 'capacity')
+        other_fields=('pk', 'name', 'capacity')
     )
 
 
@@ -25,7 +25,7 @@ def skilifts_geojson(objects):
     return objects_to_geojson(
         objects,
         geo_field='track',
-        other_fields=('id', 'name', 'hourly_flow','open','twoways')
+        other_fields=('pk', 'name', 'hourly_flow','open','twoways')
     )
 
 
@@ -33,7 +33,7 @@ def slopes_geojson(objects):
     return objects_to_geojson(
         objects,
         geo_field='area',
-        other_fields=('id', 'name', 'color', 'open')
+        other_fields=('pk', 'name', 'color', 'open')
     )
 
 
@@ -41,7 +41,7 @@ def stopping_places_geojson(objects):
     return objects_to_geojson(
         objects,
         geo_field='area',
-        other_fields=('id', 'altitude')
+        other_fields=('pk', 'altitude')
     )
 
 

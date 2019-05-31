@@ -72,16 +72,41 @@
             });
             themap.setView([46.344693, 7.139517],14);
 
-            // Adds the layer/overlay selector GUI
+            // Adds the layer/overlay selector
             var layersControl = L.control.layers(
                 tileLayers, // base layers (radio buttons)
                 null, // overlays (checkboxes)
-                {collapsed: false}
+                {
+                    collapsed: false
+                }
             );
             layersControl.addTo(themap);
 
+            // Adding a scale bar on the map
+            L.control.scale().addTo(themap);
+
             // Adding a layer manually
             // layer.addTo(map);
+
+            // Adding a marker to represent the skier's current position
+            var currentPos = L.marker([46.351445, 7.157957], {draggable: true});
+            currentPos.addTo( themap );
+            currentPos.on(
+                'dragend', function(e)
+                {
+                    var coords = e.target.getLatLng();
+
+                    $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
+                    {
+                        console.log(
+                            "Closest slope " + data.slope_name
+                            + " with ID " + data.slope_id
+                            + " for position at " + data.elevation
+                            + " meters."
+                        );
+                    });
+                });
+
 
 
 
@@ -92,50 +117,9 @@
 
             var skiOverlays = {
 
-                'Restaurants' : {
-                    url: '{{ restaurants_geojson }}',
-                    normalStyle: {
-                        weight: 6,
-                        fillOpacity: 0.5
-                    },
-                    highlightStyle: {
-                        weight: 3,
-                        fillOpacity: 0.2
-                    }
-                },
-
-                'Ski lifts' : {
-                    url: '{{ skilifts_geojson }}',
-                    normalStyle: {
-                        weight: 4,
-                        color: '#333',
-                        dashArray: '30 10'
-                    },
-                    highlightStyle: {
-                        weight: 4,
-                        color: '#333'
-                    }
-                },
-
-
-                'Stopping places' : {
-                    url: '{{ stoppingplaces_geojson }}',
-                    normalStyle: {
-                        weight: 2,
-                        fillOpacity: 0.5,
-                        fillColor: '#840',
-                        color: '#840'
-                    },
-                    highlightStyle: {
-                        weight: 3,
-                        fillOpacity: 0.2,
-                        fillColor: '#840',
-                        color: '#840'
-                    }
-                },
-
                 'Slopes' : {
                     url: '{{ slopes_geojson }}',
+                    show: true,
                     normalStyle: function (feature) {
                         return {
                             weight: 2,
@@ -152,16 +136,80 @@
                             color: feature.properties.color
                         };
                     }
-                }
+                },
+
+                'Stopping places' : {
+                    url: '{{ stoppingplaces_geojson }}',
+                    normalStyle: {
+                        weight: 0,
+                        fillOpacity: 0.3,
+                        fillColor: '#840',
+                        //color: '#840'
+                    },
+                    highlightStyle: {
+                        weight: 0,
+                        fillOpacity: 0.5,
+                        fillColor: '#840',
+                        //color: '#840'
+                    }
+                },
+
+                'Ski lifts' : {
+                    url: '{{ skilifts_geojson }}',
+                    show: true,
+                    normalStyle: {
+                        weight: 4,
+                        color: '#333',
+                        dashArray: '5 10'
+                    },
+                    highlightStyle: {
+                        weight: 4,
+                        color: '#333'
+                    },
+                    featureCallback: function(json, layer)
+                    {
+                        if (layer.setIcon)
+                        {
+                            var icon = L.icon({
+                                {% load static %}
+                                iconUrl: '{% static 'restaurant_marker.png' %}',
+                                iconSize: [50, 66],
+                                iconAnchor: [25, 66],
+                                popupAnchor: [0, 0]
+                            });
+
+                            layer.setIcon( icon );
+                        }
+                    }
+                },
+
+                'Restaurants' : {
+                    url: '{{ restaurants_geojson }}',
+                    featureCallback: function(json, layer)
+                    {
+                        if (layer.setIcon)
+                        {
+                            var icon = L.icon({
+                                {% load static %}
+                                iconUrl: '{% static 'restaurant_marker.png' %}',
+                                iconSize: [50, 66],
+                                iconAnchor: [25, 66],
+                                popupAnchor: [0, 0]
+                            });
+
+                            layer.setIcon( icon );
+                        }
+                    }
+                },
             };
 
             for (var name in skiOverlays)
             {
                 var overlay = skiOverlays[name];
-                initSkiOverlay( name, overlay.url, overlay.normalStyle, overlay.highlightStyle );
+                initSkiOverlay( name, overlay.show, overlay.url, overlay.normalStyle, overlay.highlightStyle, overlay.featureCallback );
             }
 
-            function initSkiOverlay(name, apiUrl, normalStyle, highlightStyle)
+            function initSkiOverlay(name, show, apiUrl, normalStyle, highlightStyle, featureCallback)
             {
                 // REST API call to get the restaurants
                 $.getJSON(apiUrl, function (data)
@@ -169,28 +217,43 @@
                     // Fetching data
                     var geojsonLayer = L.geoJson(data, {onEachFeature: addHighlightListeners});
 
+                    if (show)
+                    {
+                        geojsonLayer.addTo( themap );
+                    }
+
                     function addHighlightListeners(featureJson, featureLayer)
                     {
-                        var normal = normalStyle;
-                        var highlight = highlightStyle;
+                        if ( typeof featureCallback === 'function' )
+                        {
+                            featureCallback( featureJson, featureLayer );
+                        }
 
-                        if (typeof normalStyle == 'function')
-                            normal = normalStyle( featureJson );
+                        // If normal and highlight styles were defined, applies and reset them
+                        // based on mouse hover
+                        if ( normalStyle && highlightStyle )
+                        {
+                            var normal = normalStyle;
+                            var highlight = highlightStyle;
 
-                        if (typeof highlightStyle == 'function')
-                            highlight = highlightStyle( featureJson );
+                            if (typeof normalStyle == 'function')
+                                normal = normalStyle( featureJson );
+
+                            if (typeof highlightStyle == 'function')
+                                highlight = highlightStyle( featureJson );
 
 
-                        // Setting the polygon's style
-                        if (featureLayer.setStyle)
-                            featureLayer.setStyle( normal );
+                            // Setting the polygon's style
+                            if (featureLayer.setStyle)
+                                featureLayer.setStyle( normal );
 
-                        // Mouse-triggered highlighting and zooming
-                        featureLayer.on({
-                            mouseover: function(e) {styleAndBringToFront(highlight, e)},
-                            //mouseout: function(e) {e.target.setStyle(normal)},
-                            click: zoomToFeature
-                        });
+                            // Mouse-triggered highlighting and zooming
+                            featureLayer.on({
+                                mouseover: function(e) {styleAndBringToFront(highlight, e)},
+                                mouseout: function(e) {e.target.setStyle(normal)},
+                                click: zoomToFeature
+                            });
+                        }
                     }
 
 
@@ -208,7 +271,7 @@
             function styleAndBringToFront(style, e) {
                 var feature = e.target;
                 feature.setStyle(style);
-                feature.bringToFront();
+                //feature.bringToFront();
             }
 
             function resetHighlight(e)
