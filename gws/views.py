@@ -3,7 +3,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from . import geodata
 from django.views.decorators.csrf import csrf_exempt
-from gws.models import Slope
+from gws.models import Slope, SkiLift
 from django.contrib.gis.geos.point import Point
 import requests  # used to call the elevation webservice
 
@@ -86,12 +86,24 @@ def route_change_pos( request ):
         'elevation': elevation
     })
 
+# Returns the elevation of a Point object
+def pt_elevation(point):
+    # The point is converted into its SR 4326 equivalent
+    point_sr_4326 = point.transform(4326, clone=True)
 
-# Returns the elevation of the position using a webservice
+    # Temporarily storing latitude and longitude (for clarity/readability)
+    lat = point_sr_4326.y
+    lng = point_sr_4326.x
+
+    return get_elevation(lat, lng)
+
+# Returns the elevation of the position using a webservice.
+# Expects SR 4326 latitude and longitude!
 def get_elevation(lat, lng):
 
     extent_offset = 0.0075  # empirical value to get a good precision
     map_extent = str(lng - extent_offset) + ',' + str(lat - extent_offset)
+    map_extent += ','
     map_extent += str(lng + extent_offset) + ',' + str(lat + extent_offset)
 
     # URL to the elevation webservice of the Copernicus program (European Union)
@@ -101,7 +113,7 @@ def get_elevation(lat, lng):
     parameters = {
         'geometry': str(lng) + ',' + str(lat),  # point coordinates
         'geometryType': 'esriGeometryPoint',  # a Point is sent to the webservice
-        'sr': '4326',  # standard CRS for latitudes and longitudes is used
+        'sr': '4326',  # Spatial reference 4326 is used by default
         'tolerance': '3',  # a 3 pixel tolerance is enough
         'mapExtent': map_extent,
         'imageDisplay': '300,300,96',  # width, height and DPI of the elevation map
@@ -112,20 +124,87 @@ def get_elevation(lat, lng):
     r = requests.get(elevation_ws_url, params=parameters)
 
     try:
-        return r.json()['results'][0]['attributes']['Pixel Value'];
+        return float(r.json()['results'][0]['attributes']['Pixel Value'])
     except:
-        return None;
+        return None
 
 
-def get_neighbour_slopes(current_slope, current_position):
+def asdf(start_slope, start_position, end_slope):
 
-    slopes = Slope.objects.all()
+    current_place = start_slope
+    current_pos = start_position
+
+    all_slopes = list(Slope.objects.all())
+    all_skilifts = list(SkiLift.objects.all())
+
+    to_visit = list()
+    visited = set()
+
+    
 
 
-    # a slope can be reached if it intersects lower than the current position
+def is_slope_reachable(current_place, current_pos, slope):
 
-    # a ski lift can be reached if it intersects lower than the current position
+    # Slope-to-slope connection to check
+    if isinstance(current_place, Slope):
+        current_slope = current_place
+        intersection = current_slope.area.intersection(slope.area)
 
+        # if the current slope does not intersect with the other, we cannot reach it
+        if intersection.empty:
+            return False
+        # if it does intersect, we consider we can reach it if we are higher than the
+        # intersection's centroid
+        elif pt_elevation(current_pos) > pt_elevation(intersection.centroid):
+            return True
+        else:
+            return False
+
+    # Skilift-to-slope connection to check
+    elif isinstance(current_place, SkiLift):
+        current_lift = current_place
+        lift_start = current_lift.track[0]
+        lift_end = current_lift.track[-1]
+
+        start_intersect = lift_start.intersection(slope.area)
+        end_intersect = lift_end.intersection(slope.area)
+
+        if not end_intersect.empty:
+            return True
+        elif current_lift.twoways and not start_intersect.empty:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def is_skilift_reachable(current_place, current_pos, skilift):
+
+    # it is impossible to reach a skilift from a skilift
+    # (...unless your name is James Bond or something.
+    # In which case you're probably not there to enjoy ski holidays
+    # anyway so thanks for saving the world again and God save the Queen)
+    if isinstance(current_place, SkiLift):
+        return False
+
+    elif isinstance(current_place, Slope):
+        current_slope = current_place
+        lift_start = skilift.track[0]
+        lift_end = skilift.track[-1]
+
+        start_intersect = current_slope.area.intersection(lift_start)
+        end_intersect = current_slope.area.intersection(lift_end)
+
+        # CHECK ELEVATION !!
+        if not start_intersect.empty and pt_elevation(current_pos) > pt_elevation(start_intersect):
+            return True
+        elif not end_intersect.empty and skilift.twoways:
+            return True
+        else:
+            return False
+    else:
+        return False
 
 
 def find_slope(lat, lng):
@@ -140,7 +219,7 @@ def find_slope(lat, lng):
 
     # Trying to see if the position is on a slope
     for slope in slopes:
-        if slope.area.covers(current_position):
+        if current_position.within(slope.area):
             found_slope = slope
 
     # If it is not, we consider it belongs to the closest slope
@@ -151,8 +230,8 @@ def find_slope(lat, lng):
 
         # Looking for the slope closest to the provided position
         for slope in slopes[1:]:
-            if slope.area.distance(current_position) < min_distance:
-                min_distance = slope.area.distance(current_position)
+            if current_position.distance(slope.area) < min_distance:
+                min_distance = current_position.distance(slope.area)
                 closest_slope = slope
 
         found_slope = closest_slope
