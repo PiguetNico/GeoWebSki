@@ -3,9 +3,11 @@ from django.shortcuts import render
 from django.urls import reverse
 from . import geodata
 from django.views.decorators.csrf import csrf_exempt
-from gws.models import Slope, SkiLift
+from gws.models import Slope, SkiLift, StoppingPlace, Restaurant
 from django.contrib.gis.geos.point import Point
 import requests  # used to call the elevation webservice
+import networkx as nx
+import random
 
 
 def index(request):
@@ -72,19 +74,27 @@ def geodata_stopping_places(request, _id=None):
 
 # CSRF protection disabled for convenience
 @csrf_exempt
-def route_change_pos( request ):
+def route_change_pos(request):
 
     lat = float(request.POST.get('lat'))
     lng = float(request.POST.get('lng'))
 
-    found_slope = find_slope(lat, lng)
+    current_place = find_stoppingplace(lat, lng)
     elevation = get_elevation(lat, lng)
 
+    # Selecting a random Restaurant
+    restaurants = list(Restaurant.objects.all())
+    rand_idx = random.randint(0, len(restaurants)-1)
+    restaurant_point = restaurants[rand_idx].position.transform(4326, clone=True)
+    restaurant_place = find_stoppingplace(restaurant_point.y, restaurant_point.x)
+
+    route = get_ski_route(current_place, restaurant_place)
+
     return JsonResponse({
-        'slope_id': found_slope.id,
-        'slope_name': found_slope.name,
-        'elevation': elevation
+        'elevation': elevation,
+        'route': route
     })
+
 
 # Returns the elevation of a Point object
 def pt_elevation(point):
@@ -96,6 +106,7 @@ def pt_elevation(point):
     lng = point_sr_4326.x
 
     return get_elevation(lat, lng)
+
 
 # Returns the elevation of the position using a webservice.
 # Expects SR 4326 latitude and longitude!
@@ -129,111 +140,138 @@ def get_elevation(lat, lng):
         return None
 
 
-def asdf(start_slope, start_position, end_slope):
+def get_ski_route(start_place, end_place):
+    graph = generate_directed_graph()
 
-    current_place = start_slope
-    current_pos = start_position
+    sp = nx.shortest_path(graph, start_place, end_place)
+
+    route = list()
+
+    for i in range(0,len(sp)-1):
+
+        edge_obj = graph.edges[sp[i], sp[i+1]]['obj']
+        edge_type = 'unknown'
+
+        if isinstance(edge_obj, Slope):
+            edge_type = 'slope'
+        if isinstance(edge_obj, SkiLift):
+            edge_type = 'skilift'
+
+        from_point = sp[i].area.centroid.transform(4326, clone=True)
+        to_point = sp[i+1].area.centroid.transform(4326, clone=True)
+
+        route.append({
+            'from': {
+                'id': sp[i].id,
+                'location': {
+                    'lat': from_point.y,
+                    'lng': from_point.x
+                }
+            },
+            'through': {
+                'id': edge_obj.id,
+                'type': edge_type,
+                'name': str(edge_obj)
+            },
+            'to': {
+                'id': sp[i+1].id,
+                'location': {
+                    'lat': to_point.y,
+                    'lng': to_point.x
+                }
+            }
+        })
+
+    return route
+
+
+def generate_directed_graph():
+
+    # vertices are StoppingPlace objects
+    # edges are Slope or SkiLift objects
+    all_stoppingplaces = list(StoppingPlace.objects.all())
+
+    graph = nx.DiGraph()
+    ia = 1  # this avoids testing the same pair of nodes twice
+
+    for a in all_stoppingplaces[:-1]:
+        a_neighbours = get_stoppingplace_neighbours(a)
+
+        for b in all_stoppingplaces[ia:]:
+            b_neighbours = get_stoppingplace_neighbours(b)
+
+            common_neighbours = a_neighbours & b_neighbours
+
+            if len(common_neighbours) > 0:
+                a_elevation = pt_elevation(a.area.centroid)
+                b_elevation = pt_elevation(b.area.centroid)
+
+                for cn in common_neighbours:
+                    if isinstance(cn, Slope) and cn.open:
+                        if a_elevation >= b_elevation:
+                            # insert link from a to b through cn
+                            graph.add_edge(a, b, obj=cn)
+
+                        else:
+                            # insert link from b to a through cn
+                            graph.add_edge(b, a, obj=cn)
+
+                    elif isinstance(cn, SkiLift) and cn.open:
+                        if a_elevation < b_elevation:
+                            # insert link from a to b through cn
+                            graph.add_edge(a, b, obj=cn)
+
+                        if a_elevation > b_elevation and cn.twoways:
+                            # insert link from b to a through cn
+                            graph.add_edge(b, a, obj=cn)
+        ia += 1
+    return graph
+
+
+def get_stoppingplace_neighbours(stoppingplace):
 
     all_slopes = list(Slope.objects.all())
     all_skilifts = list(SkiLift.objects.all())
+    neighbours = set()
 
-    to_visit = list()
-    visited = set()
+    for slope in all_slopes:
+        if not stoppingplace.area.intersection(slope.area).empty:
+            neighbours.add(slope)
 
-    
+    for skilift in all_skilifts:
+        if not stoppingplace.area.intersection(skilift.track).empty:
+            neighbours.add(skilift)
 
-
-def is_slope_reachable(current_place, current_pos, slope):
-
-    # Slope-to-slope connection to check
-    if isinstance(current_place, Slope):
-        current_slope = current_place
-        intersection = current_slope.area.intersection(slope.area)
-
-        # if the current slope does not intersect with the other, we cannot reach it
-        if intersection.empty:
-            return False
-        # if it does intersect, we consider we can reach it if we are higher than the
-        # intersection's centroid
-        elif pt_elevation(current_pos) > pt_elevation(intersection.centroid):
-            return True
-        else:
-            return False
-
-    # Skilift-to-slope connection to check
-    elif isinstance(current_place, SkiLift):
-        current_lift = current_place
-        lift_start = current_lift.track[0]
-        lift_end = current_lift.track[-1]
-
-        start_intersect = lift_start.intersection(slope.area)
-        end_intersect = lift_end.intersection(slope.area)
-
-        if not end_intersect.empty:
-            return True
-        elif current_lift.twoways and not start_intersect.empty:
-            return True
-        else:
-            return False
-    else:
-        return False
+    return neighbours
 
 
-def is_skilift_reachable(current_place, current_pos, skilift):
-
-    # it is impossible to reach a skilift from a skilift
-    # (...unless your name is James Bond or something.
-    # In which case you're probably not there to enjoy ski holidays
-    # anyway so thanks for saving the world again and God save the Queen)
-    if isinstance(current_place, SkiLift):
-        return False
-
-    elif isinstance(current_place, Slope):
-        current_slope = current_place
-        lift_start = skilift.track[0]
-        lift_end = skilift.track[-1]
-
-        start_intersect = current_slope.area.intersection(lift_start)
-        end_intersect = current_slope.area.intersection(lift_end)
-
-        # CHECK ELEVATION !!
-        if not start_intersect.empty and pt_elevation(current_pos) > pt_elevation(start_intersect):
-            return True
-        elif not end_intersect.empty and skilift.twoways:
-            return True
-        else:
-            return False
-    else:
-        return False
-
-
-def find_slope(lat, lng):
+def find_stoppingplace(lat, lng):
 
     current_position = Point(
         lng, lat,  # careful! latitude and longitude MUST be reversed here!
         srid=4326  # 4326 used by Leaflet when working with latitude and longitude
     )
 
-    slopes = Slope.objects.all()
-    found_slope = None
+    places = StoppingPlace.objects.all()
+    found_place = None
 
     # Trying to see if the position is on a slope
-    for slope in slopes:
-        if current_position.within(slope.area):
-            found_slope = slope
+    for place in places:
+        if current_position.within(place.area):
+            found_place = place
 
     # If it is not, we consider it belongs to the closest slope
-    if found_slope is None:
+    if found_place is None:
 
-        min_distance = slopes[0].area.distance(current_position)
-        closest_slope = slopes[0]
+        min_distance = places[0].area.distance(current_position)
+        closest_place = places[0]
 
         # Looking for the slope closest to the provided position
-        for slope in slopes[1:]:
-            if current_position.distance(slope.area) < min_distance:
-                min_distance = current_position.distance(slope.area)
-                closest_slope = slope
+        for place in places[1:]:
+            if current_position.distance(place.area) < min_distance:
+                min_distance = current_position.distance(place.area)
+                closest_place = place
 
-        found_slope = closest_slope
+        found_place = closest_place
 
-    return found_slope
+    return found_place

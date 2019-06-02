@@ -32,6 +32,7 @@
         <p>Template value for foo is <strong>{{ foo }}</strong>.</p>
 
         <div id="swissmap"></div>
+        <div id="route_output" style="text-align: center"></div>
 
         <script type="text/javascript">
 
@@ -89,6 +90,7 @@
             // layer.addTo(map);
 
             // Adding a marker to represent the skier's current position
+            var routePolyline = null;
             var currentPos = L.marker([46.351445, 7.157957], {draggable: true});
             currentPos.addTo( themap );
             currentPos.on(
@@ -99,12 +101,66 @@
                     $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
                     {
                         console.log(
-                            "Closest slope " + data.slope_name
-                            + " with ID " + data.slope_id
-                            + " for position at " + data.elevation
-                            + " meters."
+                            "Elevation: " + data.elevation + " meters."
                         );
+
+                        var route_coords = [
+                            [
+                                data.route[0].from.location.lat,
+                                data.route[0].from.location.lng
+                            ]
+                        ];
+
+                        var route_steps = [];
+
+                        for (var i = 0; i < data.route.length; i++)
+                        {
+                            route_coords.push(
+                                [   data.route[i].to.location.lat,
+                                    data.route[i].to.location.lng
+                                ]
+                            );
+
+                            if ( data.route[i].through.type === 'slope' )
+                            {
+                                route_steps.push('Ski down <b>' + data.route[i].through.name + '</b>');
+                            }
+
+                            else if ( data.route[i].through.type === 'skilift' )
+                            {
+                                route_steps.push('Take lift <b>' + data.route[i].through.name + '</b>');
+                            }
+
+                            else
+                            {
+                                route_steps.push('<b>' + data.route[i].through.name + '</b>');
+                            }
+                        }
+
+                        // Removing old route
+                        if (routePolyline)
+                            routePolyline.removeFrom( themap );
+
+                        // Creating new route polyline
+                        routePolyline = L.polyline(
+                            route_coords,
+                            {color: '#07a', opacity:0.5, weight: 20}
+                        );
+
+                        // Displaying the polyline
+                        routePolyline.addTo( themap );
+
+                        var ol = $('<ol></ol>');
+
+                        for (var i = 0; i < route_steps.length; i++)
+                        {
+                            ol.append( $('<li></li>').html(route_steps[i]) );
+                        }
+
+                        $('#route_output').empty().append(ol);
                     });
+
+                    $('#route_output').empty().append('Calculating route...');
                 });
 
 
@@ -192,8 +248,8 @@
                             var icon = L.icon({
                                 {% load static %}
                                 iconUrl: '{% static 'restaurant_marker.png' %}',
-                                iconSize: [50, 66],
-                                iconAnchor: [25, 66],
+                                iconSize: [30, 39],
+                                iconAnchor: [15, 39],
                                 popupAnchor: [0, 0]
                             });
 
