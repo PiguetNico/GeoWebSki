@@ -19,4 +19,6 @@ urlpatterns = [
     path('geodata/stopping-places', views.geodata_stopping_places, name='stoppingplaces_geojson'),
     path('geodata/stopping-place/<int:_id>', views.geodata_stopping_places, name='stopping_place_id_geojson'),
 
+    path('rasterdata/temperature', views.weather_points_all_weeks_temperature, name='temperature_geojson'),
+
 ]

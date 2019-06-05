@@ -61,14 +61,16 @@
     </head>
     <body>
 
-
-        <p>Template value for foo is <strong>{{ foo }}</strong>.</p>
-
-
         <div id="restos">
 
             <h2> Restaurants </h2>
 
+        </div>
+
+        <div id="temperatures">
+            <h2>Temperatures for the past 7 weeks</h2>
+            <p>Click here and use the cursor to see the temperatures.</p>
+            <form> <input type="checkbox"  id="temp"><label for="temp">Temperatures</label> </form>
         </div>
 
 
@@ -182,7 +184,11 @@
                 {
                     var coords = e.target.getLatLng();
 
-                    $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
+                    if (document.getElementById("myCheck").checked)
+                    {
+
+                    } else {
+                        $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
                     {
                         console.log(
                             "Elevation: " + data.elevation + " meters."
@@ -245,6 +251,8 @@
                     });
 
                     $('#route_output').empty().append('Calculating route...');
+                    }
+
                 });
 
 

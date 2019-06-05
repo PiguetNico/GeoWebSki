@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from . import geodata
+from . import weather_points
 from django.views.decorators.csrf import csrf_exempt
 from gws.models import Slope, SkiLift, StoppingPlace, Restaurant
 from django.contrib.gis.geos.point import Point
@@ -17,7 +18,8 @@ def index(request):
         'slopes_geojson': reverse('slopes_geojson'),
         'stoppingplaces_geojson': reverse('stoppingplaces_geojson'),
         'skilifts_geojson': reverse('skilifts_geojson'),
-        'route_change_pos': reverse('route_change_pos')
+        'route_change_pos': reverse('route_change_pos'),
+        'temperature_geojson': reverse('temperature_geojson')
     };
     return render(request, 'map.html', api_urls)
 
@@ -70,6 +72,17 @@ def geodata_stopping_places(request, _id=None):
 
         content_type='application/json'
     )
+
+def weather_points_all_weeks_temperature(request):
+
+    lat = float(request.POST.get('lat'))
+    lng = float(request.POST.get('lng'))
+
+    temp = weather_points.all_weeks_temperature(lat, lng)
+
+    return JsonResponse({
+        'temperatures': temp
+    })
 
 
 # CSRF protection disabled for convenience
