@@ -17,11 +17,44 @@
         <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
         <style type="text/css">
+            body {
+              font-family: Helvetica, Arial, Sans-Serif;
+                font-size: 20px;
+            }
+
+            h2 {
+                  text-align: center;
+            }
+
             #swissmap
             {
                 margin: 1em auto;
                 width: 800px;
                 height: 600px;
+            }
+
+            ul{
+                list-style-type: none;
+            }
+            button{
+                background-color: lightgreen;
+                border: none;
+                cursor: pointer;
+                margin: 4px 5px;
+                font-size: 16px;
+                border-radius: 4px;
+
+            }
+            button:hover{
+                background-color: limegreen;
+            }
+            button:active{
+                background-color: mediumseagreen;
+            }
+            #restos{
+               margin:25px;
+               float:left;
+               background:gainsboro;
             }
         </style>
 
@@ -31,10 +64,61 @@
 
         <p>Template value for foo is <strong>{{ foo }}</strong>.</p>
 
+
+        <div id="restos">
+
+            <h2> Restaurants </h2>
+
+        </div>
+
+
+
         <div id="swissmap"></div>
         <div id="route_output" style="text-align: center"></div>
 
         <script type="text/javascript">
+
+            // Click on the button "Go there!"
+            function restoClick(e)
+            {
+                console.log("clicked restaurant " + e.target.dataset.id);
+            }
+
+            // Get all the restaurant's names
+            $.getJSON("{{ restaurants_geojson }}", function (data)
+            {
+                // Log the JSON file in the browser
+                console.log(data);
+                var restaurants = [];
+
+                // Load all restaurants we have in an array
+                data.features.forEach(function(e)
+                {
+                    restaurants.push( {id: e.properties.pk ,name: e.properties.name} );
+                });
+
+                // Create the structure to display restaurants
+                var ul = document.createElement('ul');
+
+                for (var i = 0; i < restaurants.length; i++)
+                {
+                    var li = document.createElement('li');
+                    li.appendChild( document.createTextNode(restaurants[i].name) );
+
+                    var btn = document.createElement('button');
+                    btn.dataset.id = restaurants[i].id;
+                    btn.appendChild( document.createTextNode('Go there!') );
+                    btn.addEventListener('click', restoClick);
+                    li.appendChild( btn );
+
+                    ul.appendChild( li );
+                }
+
+                //document.getElementById('restos')
+                document.querySelector('#restos').appendChild( ul );
+            });
+
+
 
             // Interesting layer options to use:
             // 'subdomains' to customize which subdomains are used for parallel download
@@ -352,7 +436,6 @@
                 themap.fitBounds(e.target.getBounds());
             }
 
-
             // ====================================================
             // ============= Example code for popups ==============
             // ====================================================
@@ -400,6 +483,8 @@
             circle.bindPopup("A circle near Interlaken.");
             polygon.bindPopup("The area of a new Swiss canton.");
             */
+
+
 
         </script>
     </body>
