@@ -15,6 +15,9 @@
 
         <!-- jQuery -->
         <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+        <!-- chartJS- -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js" charset="utf-8"></script>
+
 
         <style type="text/css">
             body {
@@ -71,6 +74,7 @@
             <h2>Temperatures for the past 7 weeks</h2>
             <p>Click here and use the cursor to see the temperatures.</p>
             <form> <input type="checkbox"  id="temp"><label for="temp">Temperatures</label> </form>
+            <canvas id="tempChart" width="400" height="400"></canvas>
         </div>
 
 
@@ -79,6 +83,80 @@
         <div id="route_output" style="text-align: center"></div>
 
         <script type="text/javascript">
+
+            var ctx = document.getElementById("tempChart");
+var tempChart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+        labels: ["Nuclear", "Thermal", "PV", "Aeolian", "Hydraulic", "Hydraulic_accumulator"],
+        datasets: [{
+            label: 'New Renewable Energies',
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(153, 102, 255, 0.2)',
+                'rgba(255, 159, 64, 0.2)'
+            ],
+            borderColor: [
+                'rgba(255,99,132,1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)'
+            ],
+            borderWidth: 1,
+            hoverBackgroundColor:[
+                'rgba(255,99,132,1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)'
+            ]
+        }]
+    },
+    options: {
+      responsive: false,
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true,
+                }
+            }]
+        }
+    }
+});
+
+var cbTemperature = document.getElementById("temp");
+
+cbTemperature.addEventListener('change', function(e) {
+
+    console.log(e.target);
+    if (e.target.checked)
+                    {
+                        ctx.style.visibility = 'visible';
+                    } else {
+                        ctx.style.visibility = 'hidden';
+                    }
+});
+
+$.post({
+  url: "{{ temperature_geojson }}",
+  data: {},
+  success: function (response) {
+    console.log(response);
+    //tempChart.data.datasets[0].data = [response.Nuclear, response.Thermal, response.PV, response.Aeolian, response.Hydraulic_River, response.Hydraulic_Accu];
+    //tempChart.update();
+  },
+  dataType: "json"
+})
+
+
+
+
 
             // Click on the button "Go there!"
             function restoClick(e)
@@ -184,11 +262,7 @@
                 {
                     var coords = e.target.getLatLng();
 
-                    if (document.getElementById("myCheck").checked)
-                    {
-
-                    } else {
-                        $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
+                    $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
                     {
                         console.log(
                             "Elevation: " + data.elevation + " meters."
@@ -251,7 +325,6 @@
                     });
 
                     $('#route_output').empty().append('Calculating route...');
-                    }
 
                 });
 
