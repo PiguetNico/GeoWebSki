@@ -73,6 +73,9 @@ def geodata_stopping_places(request, _id=None):
         content_type='application/json'
     )
 
+
+# CSRF protection disabled for convenience
+@csrf_exempt
 def weather_points_all_weeks_temperature(request):
 
     lat = float(request.POST.get('lat'))

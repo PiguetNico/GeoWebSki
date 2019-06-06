@@ -21,19 +21,14 @@
 
         <style type="text/css">
             body {
-              font-family: Helvetica, Arial, Sans-Serif;
-                font-size: 20px;
+                font-family: Helvetica, Arial, Sans-Serif;
+                font-size: 16px;
+                margin: 20px;
+                padding: 0;
             }
 
             h2 {
                   text-align: center;
-            }
-
-            #swissmap
-            {
-                margin: 1em auto;
-                width: 800px;
-                height: 600px;
             }
 
             ul{
@@ -55,108 +50,89 @@
                 background-color: mediumseagreen;
             }
             #restos{
-               margin:25px;
-               float:left;
                background:gainsboro;
             }
+
+            #swissmap
+            {
+                margin: 0 20px;
+                width: 800px;
+                height: 600px;
+            }
+
+            .wrapper
+            {
+                display: flex;
+                /*border: 1px solid blue;*/
+            }
+            /*.wrapper > *
+            {
+                border: 1px solid red;
+            }*/
         </style>
 
     </head>
     <body>
 
-        <div id="restos">
+        <div class="wrapper">
+            <div id="restos">
+                <h2> Restaurants </h2>
+            </div>
 
-            <h2> Restaurants </h2>
+            <div>
+                <div id="swissmap"></div>
+                <h2>Routing</h2>
+                <div id="route_output" style="text-align: center">No route at the moment.</div>
+            </div>
+
+
+            <div id="temperatures">
+                <h2>Temperatures for the past 7 weeks</h2>
+                <p>Click here and use the cursor to see the temperatures.</p>
+                <form> <input type="checkbox" checked id="temp"><label for="temp">Temperatures</label> </form>
+                <canvas id="tempChart" width="400" height="400"></canvas>
+            </div>
 
         </div>
 
-        <div id="temperatures">
-            <h2>Temperatures for the past 7 weeks</h2>
-            <p>Click here and use the cursor to see the temperatures.</p>
-            <form> <input type="checkbox"  id="temp"><label for="temp">Temperatures</label> </form>
-            <canvas id="tempChart" width="400" height="400"></canvas>
-        </div>
-
-
-
-        <div id="swissmap"></div>
-        <div id="route_output" style="text-align: center"></div>
 
         <script type="text/javascript">
 
             var ctx = document.getElementById("tempChart");
-var tempChart = new Chart(ctx, {
-    type: 'pie',
-    data: {
-        labels: ["Nuclear", "Thermal", "PV", "Aeolian", "Hydraulic", "Hydraulic_accumulator"],
-        datasets: [{
-            label: 'New Renewable Energies',
-            backgroundColor: [
-                'rgba(255, 99, 132, 0.2)',
-                'rgba(54, 162, 235, 0.2)',
-                'rgba(255, 206, 86, 0.2)',
-                'rgba(75, 192, 192, 0.2)',
-                'rgba(153, 102, 255, 0.2)',
-                'rgba(255, 159, 64, 0.2)'
-            ],
-            borderColor: [
-                'rgba(255,99,132,1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)',
-                'rgba(255, 159, 64, 1)'
-            ],
-            borderWidth: 1,
-            hoverBackgroundColor:[
-                'rgba(255,99,132,1)',
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)',
-                'rgba(255, 159, 64, 1)'
-            ]
-        }]
-    },
-    options: {
-      responsive: false,
-        scales: {
-            yAxes: [{
-                ticks: {
-                    beginAtZero:true,
-                }
-            }]
-        }
-    }
-});
-
-var cbTemperature = document.getElementById("temp");
-
-cbTemperature.addEventListener('change', function(e) {
-
-    console.log(e.target);
-    if (e.target.checked)
-                    {
-                        ctx.style.visibility = 'visible';
-                    } else {
-                        ctx.style.visibility = 'hidden';
+            var tempChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7"],
+                    datasets: [{
+                        label: 'Temperature [°C]',
+                        backgroundColor: 'rgba(0,90,180,.3)',
+                        borderColor: 'rgba(0,90,180,1)',
+                        fill: 'start'
+                    }],
+                },
+                options: {
+                  responsive: false,
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero:true,
+                            }
+                        }]
                     }
-});
+                }
+            });
 
-$.post({
-  url: "{{ temperature_geojson }}",
-  data: {},
-  success: function (response) {
-    console.log(response);
-    //tempChart.data.datasets[0].data = [response.Nuclear, response.Thermal, response.PV, response.Aeolian, response.Hydraulic_River, response.Hydraulic_Accu];
-    //tempChart.update();
-  },
-  dataType: "json"
-})
+            var cbTemperature = document.getElementById("temp");
 
+            cbTemperature.addEventListener('change', function(e) {
 
-
-
+                if (e.target.checked)
+                {
+                    ctx.style.visibility = 'visible';
+                } else {
+                    ctx.style.visibility = 'hidden';
+                }
+            });
 
             // Click on the button "Go there!"
             function restoClick(e)
@@ -261,6 +237,19 @@ $.post({
                 'dragend', function(e)
                 {
                     var coords = e.target.getLatLng();
+
+                    $.post('{{ temperature_geojson }}', {lat: coords.lat, lng: coords.lng}, function (data) {
+
+                        if (data.temperatures)
+                        {
+                            tempChart.data.datasets[0].data = data.temperatures;
+                            tempChart.update();
+                        }
+                        else
+                        {
+                            console.warn('No temperature data returned!');
+                        }
+                    });
 
                     $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
                     {
