@@ -404,10 +404,13 @@
                                 iconUrl: '{% static 'restaurant_marker.png' %}',
                                 iconSize: [30, 39],
                                 iconAnchor: [15, 39],
-                                popupAnchor: [0, 0]
+                                popupAnchor: [0, -30]
                             });
                             layer.setIcon( icon );
-                            layer.bindPopup("Restaurant: " + json.properties.name).openPopup();
+                            layer.on('mouseover', function(e){
+                                 layer.bindPopup("Restaurant: " + json.properties.name).openPopup();
+                            });
+
 
                         }
                     }
