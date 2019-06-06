@@ -13,8 +13,13 @@ def get_temperature_from_week_and_geolocation(lat, lng, week):
     # link the spatial reference to the columns and rows
     row, col = dataset.index(lng, lat)
 
-    # return the value (temperature) associated to a specific box in the list
-    return band_one[row, col].tolist()
+    if 0 < row < len(band_one) and 0 < col <len(band_one[0]):
+        # return the value (temperature) associated to a specific box in the list
+        return band_one[row, col].tolist()
+
+    return None
+
+
 
 
 def all_weeks_temperature(lat, lng):
