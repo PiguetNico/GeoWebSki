@@ -8,7 +8,7 @@ from gws.models import Slope, SkiLift, StoppingPlace, Restaurant
 from django.contrib.gis.geos.point import Point
 import requests  # used to call the elevation webservice
 import networkx as nx
-import random
+from networkx.exception import NetworkXNoPath, NodeNotFound
 
 
 def index(request):
@@ -20,7 +20,7 @@ def index(request):
         'skilifts_geojson': reverse('skilifts_geojson'),
         'route_change_pos': reverse('route_change_pos'),
         'temperature_geojson': reverse('temperature_geojson')
-    };
+    }
     return render(request, 'map.html', api_urls)
 
 
@@ -94,14 +94,14 @@ def route_change_pos(request):
 
     lat = float(request.POST.get('lat'))
     lng = float(request.POST.get('lng'))
+    restaurant_id = float(request.POST.get('restaurant_id'))
 
     current_place = find_stoppingplace(lat, lng)
     elevation = get_elevation(lat, lng)
 
     # Selecting a random Restaurant
-    restaurants = list(Restaurant.objects.all())
-    rand_idx = random.randint(0, len(restaurants)-1)
-    restaurant_point = restaurants[rand_idx].position.transform(4326, clone=True)
+    restaurant = Restaurant.objects.filter(id=restaurant_id)[0]
+    restaurant_point = restaurant.position.transform(4326, clone=True)
     restaurant_place = find_stoppingplace(restaurant_point.y, restaurant_point.x)
 
     route = get_ski_route(current_place, restaurant_place)
@@ -159,46 +159,51 @@ def get_elevation(lat, lng):
 def get_ski_route(start_place, end_place):
     graph = generate_directed_graph()
 
-    sp = nx.shortest_path(graph, start_place, end_place)
+    try:
+        sp = nx.shortest_path(graph, start_place, end_place)
 
-    route = list()
+        route = list()
 
-    for i in range(0,len(sp)-1):
+        for i in range(0,len(sp)-1):
 
-        edge_obj = graph.edges[sp[i], sp[i+1]]['obj']
-        edge_type = 'unknown'
+            edge_obj = graph.edges[sp[i], sp[i+1]]['obj']
+            edge_type = 'unknown'
 
-        if isinstance(edge_obj, Slope):
-            edge_type = 'slope'
-        if isinstance(edge_obj, SkiLift):
-            edge_type = 'skilift'
+            if isinstance(edge_obj, Slope):
+                edge_type = 'slope'
+            if isinstance(edge_obj, SkiLift):
+                edge_type = 'skilift'
 
-        from_point = sp[i].area.centroid.transform(4326, clone=True)
-        to_point = sp[i+1].area.centroid.transform(4326, clone=True)
+            from_point = sp[i].area.centroid.transform(4326, clone=True)
+            to_point = sp[i+1].area.centroid.transform(4326, clone=True)
 
-        route.append({
-            'from': {
-                'id': sp[i].id,
-                'location': {
-                    'lat': from_point.y,
-                    'lng': from_point.x
+            route.append({
+                'from': {
+                    'id': sp[i].id,
+                    'location': {
+                        'lat': from_point.y,
+                        'lng': from_point.x
+                    }
+                },
+                'through': {
+                    'id': edge_obj.id,
+                    'type': edge_type,
+                    'name': str(edge_obj)
+                },
+                'to': {
+                    'id': sp[i+1].id,
+                    'location': {
+                        'lat': to_point.y,
+                        'lng': to_point.x
+                    }
                 }
-            },
-            'through': {
-                'id': edge_obj.id,
-                'type': edge_type,
-                'name': str(edge_obj)
-            },
-            'to': {
-                'id': sp[i+1].id,
-                'location': {
-                    'lat': to_point.y,
-                    'lng': to_point.x
-                }
-            }
-        })
+            })
 
-    return route
+        return route
+
+    except (NetworkXNoPath, NodeNotFound):
+        return False
+
 
 
 def generate_directed_graph():

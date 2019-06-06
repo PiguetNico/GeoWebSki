@@ -60,29 +60,38 @@
                 height: 600px;
             }
 
+            #route_output ol > li
+            {
+                margin: 0.8em;
+            }
+
             .wrapper
             {
                 display: flex;
-                /*border: 1px solid blue;*/
             }
-            /*.wrapper > *
+
+            .left-sidebar
             {
-                border: 1px solid red;
-            }*/
+                width: 30%;
+            }
         </style>
 
     </head>
     <body>
 
         <div class="wrapper">
-            <div id="restos">
-                <h2> Restaurants </h2>
+            <div class="left-sidebar">
+                <h2>Restaurants</h2>
+                <div id="restos"></div>
+
+                <h2>Routing</h2>
+                <div id="route_output">
+                    🍲 Click on a restaurant button to calculate your route. 🍲
+                </div>
             </div>
 
             <div>
                 <div id="swissmap"></div>
-                <h2>Routing</h2>
-                <div id="route_output" style="text-align: center">No route at the moment.</div>
             </div>
 
 
@@ -137,41 +146,53 @@
             // Click on the button "Go there!"
             function restoClick(e)
             {
-                console.log("clicked restaurant " + e.target.dataset.id);
+                var coords = currentPos.getLatLng();
+                var restaurant_id = e.target.dataset.id;
+
+                computeRoute( coords.lat, coords.lng, restaurant_id );
             }
 
             // Get all the restaurant's names
             $.getJSON("{{ restaurants_geojson }}", function (data)
             {
-                // Log the JSON file in the browser
-                console.log(data);
-                var restaurants = [];
-
-                // Load all restaurants we have in an array
-                data.features.forEach(function(e)
+                if (data.features && data.features.forEach)
                 {
-                    restaurants.push( {id: e.properties.pk ,name: e.properties.name} );
-                });
+                    var restaurants = [];
 
-                // Create the structure to display restaurants
-                var ul = document.createElement('ul');
+                    // Load all restaurants we have in an array
+                    data.features.forEach(function(e)
+                    {
+                        restaurants.push( {id: e.properties.pk ,name: e.properties.name} );
+                    });
 
-                for (var i = 0; i < restaurants.length; i++)
-                {
-                    var li = document.createElement('li');
-                    li.appendChild( document.createTextNode(restaurants[i].name) );
+                    // Create the structure to display restaurants
+                    var ul = document.createElement('ul');
 
-                    var btn = document.createElement('button');
-                    btn.dataset.id = restaurants[i].id;
-                    btn.appendChild( document.createTextNode('Go there!') );
-                    btn.addEventListener('click', restoClick);
-                    li.appendChild( btn );
+                    for (var i = 0; i < restaurants.length; i++)
+                    {
+                        var li = document.createElement('li');
+                        li.appendChild( document.createTextNode(restaurants[i].name) );
 
-                    ul.appendChild( li );
+                        var btn = document.createElement('button');
+                        btn.dataset.id = restaurants[i].id;
+                        btn.appendChild( document.createTextNode('Go there!') );
+                        btn.addEventListener('click', restoClick);
+                        li.appendChild( btn );
+
+                        ul.appendChild( li );
+                    }
+
+                    //document.getElementById('restos')
+                    document.querySelector('#restos').appendChild( ul );
                 }
 
-                //document.getElementById('restos')
-                document.querySelector('#restos').appendChild( ul );
+                else
+                {
+                    console.error('Unable to fetch restaurants...');
+                    document.querySelector('#restos').appendChild(
+                        document.createTextNode('Unable to fetch restaurants...')
+                    );
+                }
             });
 
 
@@ -236,6 +257,13 @@
             currentPos.on(
                 'dragend', function(e)
                 {
+                    // Removing old route
+                    if (routePolyline)
+                        routePolyline.removeFrom( themap );
+
+                    // Displaying a message to tell to choose a restaurant
+                    $('#route_output').empty().append('🍲 Click on a restaurant button to calculate your route. 🍲');
+
                     var coords = e.target.getLatLng();
 
                     $.post('{{ temperature_geojson }}', {lat: coords.lat, lng: coords.lng}, function (data) {
@@ -250,72 +278,103 @@
                             console.warn('No temperature data returned!');
                         }
                     });
+                });
 
-                    $.post('{{ route_change_pos }}',{lat: coords.lat, lng: coords.lng}, function(data)
+
+            function computeRoute( lat, lng, rest_id )
+            {
+                // Removing old route
+                if (routePolyline)
+                    routePolyline.removeFrom( themap );
+
+                $.post('{{ route_change_pos }}',
                     {
-                        console.log(
-                            "Elevation: " + data.elevation + " meters."
-                        );
+                        lat: lat,
+                        lng: lng,
+                        restaurant_id: rest_id
+                    }, function(data)
+                {
+                    if (data.route === false)
+                    {
+                        // Node not found
+                        $('#route_output').empty().append('The restaurant was not found in the resort ☹');
+                    }
 
-                        var route_coords = [
-                            [
-                                data.route[0].from.location.lat,
-                                data.route[0].from.location.lng
-                            ]
-                        ];
-
-                        var route_steps = [];
-
-                        for (var i = 0; i < data.route.length; i++)
+                    else if ( Array.isArray(data.route) )
+                    {
+                        if ( data.route.length === 0 )
                         {
-                            route_coords.push(
-                                [   data.route[i].to.location.lat,
-                                    data.route[i].to.location.lng
+                            $('#route_output').empty().append('You are already near your destination 😎');
+                        }
+
+                        else
+                        {
+                            var route_coords = [
+                                [
+                                    data.route[0].from.location.lat,
+                                    data.route[0].from.location.lng
                                 ]
+                            ];
+
+                            var route_steps = [
+                                'You are starting your route at an altitude of <b>' + (data.elevation|0) + ' meters</b>.'
+                            ];
+
+                            for (var i = 0; i < data.route.length; i++)
+                            {
+                                route_coords.push(
+                                    [   data.route[i].to.location.lat,
+                                        data.route[i].to.location.lng
+                                    ]
+                                );
+
+                                if ( data.route[i].through.type === 'slope' )
+                                {
+                                    route_steps.push('Ski down <b>' + data.route[i].through.name + '</b>');
+                                }
+
+                                else if ( data.route[i].through.type === 'skilift' )
+                                {
+                                    route_steps.push('Take lift <b>' + data.route[i].through.name + '</b>');
+                                }
+
+                                else
+                                {
+                                    route_steps.push('<b>' + data.route[i].through.name + '</b>');
+                                }
+                            }
+
+                            route_steps.push('You arrived! 🙂');
+
+                            // Creating new route polyline
+                            routePolyline = L.polyline(
+                                route_coords,
+                                {color: '#07a', opacity:0.5, weight: 20}
                             );
 
-                            if ( data.route[i].through.type === 'slope' )
+                            // Displaying the polyline
+                            routePolyline.addTo( themap );
+
+                            var ol = $('<ol></ol>');
+
+                            for (var i = 0; i < route_steps.length; i++)
                             {
-                                route_steps.push('Ski down <b>' + data.route[i].through.name + '</b>');
+                                ol.append( $('<li></li>').html(route_steps[i]) );
                             }
 
-                            else if ( data.route[i].through.type === 'skilift' )
-                            {
-                                route_steps.push('Take lift <b>' + data.route[i].through.name + '</b>');
-                            }
-
-                            else
-                            {
-                                route_steps.push('<b>' + data.route[i].through.name + '</b>');
-                            }
+                            $('#route_output').empty().append(ol);
                         }
 
-                        // Removing old route
-                        if (routePolyline)
-                            routePolyline.removeFrom( themap );
-
-                        // Creating new route polyline
-                        routePolyline = L.polyline(
-                            route_coords,
-                            {color: '#07a', opacity:0.5, weight: 20}
-                        );
-
-                        // Displaying the polyline
-                        routePolyline.addTo( themap );
-
-                        var ol = $('<ol></ol>');
-
-                        for (var i = 0; i < route_steps.length; i++)
-                        {
-                            ol.append( $('<li></li>').html(route_steps[i]) );
-                        }
-
-                        $('#route_output').empty().append(ol);
-                    });
-
-                    $('#route_output').empty().append('Calculating route...');
+                    }
 
                 });
+
+                $('#route_output').empty().append('⏳ Calculating route...');
+            }
+
+
+
+
 
 
 
