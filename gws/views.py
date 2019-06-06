@@ -81,7 +81,11 @@ def weather_points_all_weeks_temperature(request):
     lat = float(request.POST.get('lat'))
     lng = float(request.POST.get('lng'))
 
-    temp = weather_points.all_weeks_temperature(lat, lng)
+    if lat is not None and lng is not None:
+        temp = weather_points.all_weeks_temperature(lat, lng)
+    else:
+        temp = None
+
 
     return JsonResponse({
         'temperatures': temp

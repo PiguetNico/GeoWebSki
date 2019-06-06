@@ -240,7 +240,7 @@
 
                     $.post('{{ temperature_geojson }}', {lat: coords.lat, lng: coords.lng}, function (data) {
 
-                        if (data.temperatures)
+                        if (Array.isArray(data.temperatures))
                         {
                             tempChart.data.datasets[0].data = data.temperatures;
                             tempChart.update();
@@ -406,8 +406,9 @@
                                 iconAnchor: [15, 39],
                                 popupAnchor: [0, 0]
                             });
-
                             layer.setIcon( icon );
+                            layer.bindPopup("Restaurant: " + json.properties.name).openPopup();
+
                         }
                     }
                 },
